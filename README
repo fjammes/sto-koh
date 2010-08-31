@@ -1,0 +1,7 @@
+Launch application with the following command line in the competitivelearning directory:
+
+java -cp classes application.Launcher
+
+The file build.xml is for "ant" 
+
+Note: Classes complied and tested on Sun Java 1.6

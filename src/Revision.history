@@ -1,0 +1,6 @@
+V1.0 Spring 2005 - First Release
+v1.1 July 2005 - Added network edge and Delaunay Triangulation view switches
+V1.2 November 2007
+  1. Revised to clear compiler warnings when compiled with java > v1.5.  
+  2. The addition of <generic> patterns for containers.  
+  3. SelGraphics.java - simplified vector usage and removed flicker when network paused.

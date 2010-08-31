@@ -1,0 +1,30 @@
+<project name="Competitive Learning" default="compile" basedir=".">
+
+   <target name="init">
+      <property name="sourceDir" value="src" />
+      <property name="outputDir" value="classes" />
+      <property name="docDir" value="doc" />
+    </target>
+
+   <target name="clean" depends="init">
+      <delete dir="${outputDir}" />
+      <delete dir="${docDir}" />
+   </target>
+
+   <target name="prepare" depends="clean">
+      <mkdir dir="${outputDir}" />
+      <mkdir dir="${docDir}" />
+   </target>
+
+   <target name="compile" depends="prepare">
+     <javac srcdir="${sourceDir}" destdir="${outputDir}">
+       <compilerarg value="-Xlint:unchecked" />
+     </javac>
+   </target>
+
+   <target name="documents" depends="compile">
+     <javadoc sourcepath="${sourceDir}" destdir="${docDir}" />
+   </target>
+
+</project>
+
