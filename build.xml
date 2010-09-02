@@ -1,29 +1,34 @@
 <project name="Competitive Learning" default="compile" basedir=".">
 
-   <target name="init">
-      <property name="sourceDir" value="src" />
-      <property name="outputDir" value="classes" />
-      <property name="docDir" value="doc" />
-    </target>
+    <property name="src.dir" value="${basedir}/src" />
+    <property name="build.dir" value="${basedir}/build" />
+    <property name="doc.dir" value="${basedir}/doc" />
+    <property name="lib.dir" value="${basedir}/lib" />
 
-   <target name="clean" depends="init">
-      <delete dir="${outputDir}" />
-      <delete dir="${docDir}" />
+    <path id="lib.classpath">
+        <fileset dir="${lib.dir}">
+            <include name="**/*.jar" />
+        </fileset>
+    </path>
+
+   <target name="clean">
+      <delete dir="${build.dir}" />
+      <delete dir="${doc.dir}" />
    </target>
 
    <target name="prepare" depends="clean">
-      <mkdir dir="${outputDir}" />
-      <mkdir dir="${docDir}" />
+      <mkdir dir="${build.dir}" />
+      <mkdir dir="${doc.dir}" />
    </target>
 
    <target name="compile" depends="prepare">
-     <javac srcdir="${sourceDir}" destdir="${outputDir}">
+     <javac srcdir="${src.dir}" destdir="${build.dir}" classpathref="lib.classpath">
        <compilerarg value="-Xlint:unchecked" />
      </javac>
    </target>
 
    <target name="documents" depends="compile">
-     <javadoc sourcepath="${sourceDir}" destdir="${docDir}" />
+     <javadoc sourcepath="${src.dir}" destdir="${doc.dir}" />
    </target>
 
 </project>

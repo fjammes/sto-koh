@@ -43,7 +43,7 @@ public class Graph extends Observable implements Cloneable {
      * Get an Iterator of all the vertices in this Graph
      * @return an iterator to all the vertices
      */
-    public Iterator getAllVertices() {
+    public Iterator<Vertex> getAllVertices() {
         return verts_.iterator();
     }
 
@@ -55,7 +55,7 @@ public class Graph extends Observable implements Cloneable {
      * Get an Iterator of all the edges in this Graph
      * @return an iterator to all the edges
      */
-    synchronized public Iterator getAllEdges() {
+    synchronized public Iterator<Edge> getAllEdges() {
         return edges_.iterator();
     }
 
@@ -523,11 +523,11 @@ public class Graph extends Observable implements Cloneable {
      * Use a depth first search dependent on the set/get visisted state
      * of the vertices
      */
-    synchronized public Iterator getConnectedComponents(final Vertex vertex) {
+    synchronized public Iterator<Vertex> getConnectedComponents(final Vertex vertex) {
         Vector<Vertex> visited = new Vector<Vertex>();
         resetVisitState();
         DFS(vertex);
-        for (Iterator i = getAllVertices(); i.hasNext(); ) {
+        for (Iterator<Vertex> i = getAllVertices(); i.hasNext(); ) {
             Vertex v = (Vertex)i.next();
             if (v.getVisited()) {
                 visited.add(v);

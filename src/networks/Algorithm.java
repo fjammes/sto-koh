@@ -146,9 +146,9 @@ abstract public class Algorithm implements Runnable {
       // create the adjacency matrices
 
       int ii = 0;
-      Iterator it = network.getAllVertices();
+      Iterator<Vertex> it = network.getAllVertices();
       Vertex [] vit = new Vertex[network.numVertices()];
-      for (Iterator i = network.getAllVertices(); i.hasNext(); ) {
+      for (Iterator<Vertex> i = network.getAllVertices(); i.hasNext(); ) {
         vit[ii++] = (Vertex) i.next();
       }
       for (int vii = 0; vii < vit.length; vii++) {
