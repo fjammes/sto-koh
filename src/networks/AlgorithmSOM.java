@@ -30,12 +30,13 @@ public class AlgorithmSOM extends Algorithm {
     private int dataDimension; // Data dimensionality
     private double norm; // The distance norm
     private int epoch; // Number of epochs to run for
-    private Counter iteration; // Iteration counter
     private int nRows;
     private int nColumns;
+    
+    int bmuRow;
+    int bmuColumn;
 
     private int T_MAX;
-    private Dealer dealer; // Epoch handler
 
     private int label = 0;
 
@@ -44,7 +45,6 @@ public class AlgorithmSOM extends Algorithm {
     public AlgorithmSOM(Vertex[] _data_,
                         int _dataDim_,
                         int _epoch_,
-                        Counter _iter_,
                         double _power_,
                         int _rows_,
                         int _columns_,
@@ -58,7 +58,6 @@ public class AlgorithmSOM extends Algorithm {
         dataDimension = _dataDim_;
         norm = _power_;
         epoch = _epoch_;
-        iteration = _iter_;
         nRows = _rows_;
         nColumns = _columns_;
         li = _neighbourhood_initial_;
@@ -93,7 +92,7 @@ public class AlgorithmSOM extends Algorithm {
         for (int r = 0; r < nRows; r++) {
             for (int c = 0; c < nColumns; c++) {
               SOMVertex vertex;
-              if (application.Launcher.DEBUG) {
+              if (log.isDebugEnabled()) {
                 double[] p1 = {0.1d,0.99d};
                 vertex = new SOMVertex(p1, String.valueOf(label++));
               } else {
@@ -124,78 +123,65 @@ public class AlgorithmSOM extends Algorithm {
 
     }
 
+   
+   protected void initialize() {
+       bmuRow = -1;
+       bmuColumn = -1;
+   }
+   
+   protected void iterate() {
+       // Select random input
+       // Step 1. Select random input signal e
+       //         according to P(e)
+       Vertex input;
+       if (log.isDebugEnabled()) {
+           input = (Vertex)dealer.getNextFixed();
+       } else {
+           input = (Vertex)dealer.getNext();
+       }
+       double[] inputpos = input.getPosition();
 
+       // Generate errors
+       double minerror = Double.MAX_VALUE;
+       SOMVertex bmu= null;
+       for (Iterator e = graph.getAllVertices(); e.hasNext(); ) {
+           SOMVertex vertex = ((SOMVertex)e.next());
+           double error = Vertex.Minkowski(norm, inputpos, vertex.getPosition());
+           if (error < minerror) {
+             minerror = error;
+             bmu = vertex;
+           }
+       }
 
-   public void run(){
+       // Set up the time dependencies
+       double power = ((double) iteration.getCounter()) / ((double) T_MAX);
+       // Neighbourhood size
+       double lt = li * Math.pow(lf/li,power);
+       double ltlt2 = lt * lt * 2;
+       // Learning rate
+       double et = ei * Math.pow(ef/ei,power);
 
-       int bmuRow = -1;
-       int bmuColumn = -1;
+       // Search theSOM looking for bmu
+       for (int r = 0; r < nRows; r++) {
+         for (int c = 0; c < nColumns; c++) {
+           if ( theSOM[r][c] == bmu ) {
+             bmuRow = r;
+             bmuColumn = c;
+           }
+         }
+       }
 
-        while (getState() != STOP) {
-            // force a break when the dealer is finished
-            if (!dealer.hasNext()) {
-                this.setState(STOP);
-                break;
-            }
-            if ((getState() != PAUSE)) {
-
-              // Select random input
-              // Step 1. Select random input signal e
-              //         according to P(e)
-              Vertex input;
-              if (application.Launcher.DEBUG) {
-                  input = (Vertex)dealer.getNextFixed();
-              } else {
-                  input = (Vertex)dealer.getNext();
-              }
-              double[] inputpos = input.getPosition();
-
-              // Generate errors
-              double minerror = Double.MAX_VALUE;
-              SOMVertex bmu= null;
-              for (Iterator e = graph.getAllVertices(); e.hasNext(); ) {
-                  SOMVertex vertex = ((SOMVertex)e.next());
-                  double error = Vertex.Minkowski(norm, inputpos, vertex.getPosition());
-                  if (error < minerror) {
-                    minerror = error;
-                    bmu = vertex;
-                  }
-              }
-
-              // Set up the time dependencies
-              double power = ((double) iteration.getCounter()) / ((double) T_MAX);
-              // Neighbourhood size
-              double lt = li * Math.pow(lf/li,power);
-              double ltlt2 = lt * lt * 2;
-              // Learning rate
-              double et = ei * Math.pow(ef/ei,power);
-
-              // Search theSOM looking for bmu
-              for (int r = 0; r < nRows; r++) {
-                for (int c = 0; c < nColumns; c++) {
-                  if ( theSOM[r][c] == bmu ) {
-                    bmuRow = r;
-                    bmuColumn = c;
-                  }
-                }
-              }
-
-              // update each unit
-              for (int r = 0; r < nRows; r++) {
-                for (int c = 0; c < nColumns; c++) {
-                  double d = Math.abs(bmuRow-r)+Math.abs(bmuColumn-c);
-                  double hrs = Math.exp( -(d * d) / ltlt2 );
-                  double [] pos = theSOM[r][c].getPosition();
-                  for (int i = 0; i < dataDimension; i++){
-                    pos[i] += et * hrs * (inputpos[i] - pos[i]);
-                  }
-                }
-              }
-              this.delay(this.SHORT_DELAY);
-              iteration.increment();
-            }
-            this.delay(this.LONG_DELAY);
-        }
+       // update each unit
+       for (int r = 0; r < nRows; r++) {
+         for (int c = 0; c < nColumns; c++) {
+           double d = Math.abs(bmuRow-r)+Math.abs(bmuColumn-c);
+           double hrs = Math.exp( -(d * d) / ltlt2 );
+           double [] pos = theSOM[r][c].getPosition();
+           for (int i = 0; i < dataDimension; i++){
+             pos[i] += et * hrs * (inputpos[i] - pos[i]);
+           }
+         }
+       }
    }
 
 }

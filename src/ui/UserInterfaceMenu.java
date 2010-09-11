@@ -32,6 +32,7 @@ public class UserInterfaceMenu extends JMenuBar {
     final private ActionListener menuListener;
 
     final private JMenuItem menuItemRun = new JMenuItem("Run");
+    final private JMenuItem menuItemResume = new JMenuItem("Resume");
     final private JMenuItem menuItemPause = new JMenuItem("Pause");
     final private JMenuItem menuItemStop = new JMenuItem("Stop");
 
@@ -99,6 +100,12 @@ public class UserInterfaceMenu extends JMenuBar {
       menuItemRun.addActionListener(menuListener);
       menuItemRun.setEnabled(false);
 
+      // --> Run
+      networkMenu.add(menuItemResume);
+      menuItemResume.addActionListener(menuListener);
+      menuItemResume.setEnabled(false);
+
+      
       // --> Pause
       networkMenu.add(menuItemPause);
       menuItemPause.addActionListener(menuListener);
@@ -108,7 +115,7 @@ public class UserInterfaceMenu extends JMenuBar {
       networkMenu.add(menuItemStop);
       menuItemStop.addActionListener(menuListener);
       menuItemStop.setEnabled(false);
-
+      
       // --> Speed
       networkMenu.add(new JSeparator());
       networkMenu.add(menuItemSpeed);
@@ -146,6 +153,12 @@ public class UserInterfaceMenu extends JMenuBar {
     return menuItemRun;
   }
 
+  // Getter for the Resume menu item
+  // for enable/disable from controller
+  final public JMenuItem getResume() {
+    return menuItemResume;
+  }
+  
   // Getter for the Pause menu item
   // for enable/disable from controller
   final public JMenuItem getPause() {

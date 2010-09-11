@@ -41,7 +41,7 @@ public class GCSGraph extends Graph {
      */
     public void add(GCSSimplex s) {
         simplices.add(s);
-        if (application.Launcher.DEBUG) {
+        if (log.isDebugEnabled()) {
             System.out.print("\n\nAdding Simplex(" + s.toString() + ")\n");
         }
         // Extract the vertices from the simplex and add to this graph
@@ -50,12 +50,12 @@ public class GCSGraph extends Graph {
         for (int i = 0; i < verts.length; i++) {
             GCSVertex vertex = verts[i];
             if (!this.verts_.contains(vertex)) {
-                if (application.Launcher.DEBUG) {
+                if (log.isDebugEnabled()) {
                     System.out.print(" inserted " + vertex.toString() + "\n");
                 }
                 this.addVertex(vertex);
             } else {
-                if (application.Launcher.DEBUG) {
+                if (log.isDebugEnabled()) {
                     System.out.print(" insertion failed " + vertex.toString() + "\n");
                 }
             }
@@ -66,12 +66,12 @@ public class GCSGraph extends Graph {
             for (int j = i + 1; j < s.getDimension(); j++) {
                 if (!this.areConnected(verts[i], verts[j])) {
                     GCSEdge edge = new GCSEdge(verts[i], verts[j]);
-                    if (application.Launcher.DEBUG) {
+                    if (log.isDebugEnabled()) {
                         System.out.print(" inserted " + edge.toString() + "\n");
                     }
                     this.addEdge(edge);
                 } else {
-                    if (application.Launcher.DEBUG) {
+                    if (log.isDebugEnabled()) {
                         System.out.print(" insertion failed " + connection(verts[i], verts[j]).toString() + "\n");
                     }
                 }
@@ -88,26 +88,26 @@ public class GCSGraph extends Graph {
         Vertex v2;
         Vector<Edge> edgesToDelete = new Vector<Edge>();
         Vector<Vertex> verticesToDelete = new Vector<Vertex>();
-        if (application.Launcher.DEBUG) {
+        if (log.isDebugEnabled()) {
             System.out.print("\n\nRemoving Simplex(" + s.toString() + ")\n");
             System.out.print("super() is " + super.toString() + ")\n");
         }
         Vector<GCSSimplex> simplexBar = new Vector<GCSSimplex>();
         // generate the complementary set of simplex and store
         // in simplexBar
-        if (application.Launcher.DEBUG) {
+        if (log.isDebugEnabled()) {
             System.out.print("Extracting complementary set of simplex objects...\n");
         }
         for (Iterator i = this.getSimplices(); i.hasNext(); ) {
             GCSSimplex simplex = (GCSSimplex)i.next();
-            if (application.Launcher.DEBUG) {
+            if (log.isDebugEnabled()) {
                 System.out.print("  Processing Simplex: " + simplex.toString() + ")\n");
             }
             if (simplex != s) {
                 simplexBar.add(simplex);
             }
         }
-        if (application.Launcher.DEBUG) {
+        if (log.isDebugEnabled()) {
             System.out.print("Complementary set is: " + simplexBar.toString() + ")\n");
         }
         // Do not try to delete the only simplex!!!
@@ -118,7 +118,7 @@ public class GCSGraph extends Graph {
             for (int i = 0; i < s.getDimension() - 1; i++) {
                 for (int j = i + 1; j < s.getDimension(); j++) {
                     GCSEdge edge = (GCSEdge)this.connection(verts[i], verts[j]);
-                    if (application.Launcher.DEBUG) {
+                    if (log.isDebugEnabled()) {
                         System.out.print("  Processing Edge: " + edge.toString() + "\n");
                     }
                     boolean found = false;
@@ -126,23 +126,23 @@ public class GCSGraph extends Graph {
                     // checking each for the existance of the same edge
                     for (Iterator jbar = simplexBar.iterator(); jbar.hasNext(); ) {
                         GCSSimplex simplex = (GCSSimplex)jbar.next();
-                        if (application.Launcher.DEBUG) {
+                        if (log.isDebugEnabled()) {
                             System.out.print("    against simplex: " + simplex.toString() + "\n");
                         }
                         GCSVertex[] simplexverts = simplex.getVertices();
                         for (int isimplex = 0; isimplex < simplexverts.length - 1; isimplex++) {
                             for (int jsimplex = isimplex + 1; jsimplex < simplexverts.length; jsimplex++) {
                                 GCSEdge edgesimplex = (GCSEdge)this.connection(simplexverts[isimplex], simplexverts[jsimplex]);
-                                if (application.Launcher.DEBUG) {
+                                if (log.isDebugEnabled()) {
                                     System.out.print("      extracting edge: " + edgesimplex.toString() + "\n");
                                 }
                                 if (edge.equals(edgesimplex)) {
                                     found = true;
-                                    if (application.Launcher.DEBUG) {
+                                    if (log.isDebugEnabled()) {
                                         System.out.print("        same....\n");
                                     }
                                 } else {
-                                    if (application.Launcher.DEBUG) {
+                                    if (log.isDebugEnabled()) {
                                         System.out.print("        different....\n");
                                     }
                                 }
@@ -150,7 +150,7 @@ public class GCSGraph extends Graph {
                         }
                     }
                     if (!found) {
-                        if (application.Launcher.DEBUG) {
+                        if (log.isDebugEnabled()) {
                             System.out.print("  Unable to locate edge in another simplex, so let us delete it...\n");
                         }
                         v1 = edge.getOneEnd();
@@ -171,86 +171,84 @@ public class GCSGraph extends Graph {
                         //    else
                         //      do nothing
                         // Process v1
-                        if (application.Launcher.DEBUG) {
+                        if (log.isDebugEnabled()) {
                             System.out.print("Checking for unconnected vertex v1: " + v1.toString() + "\n");
                         }
                         boolean v1found = false;
                         for (Iterator jbar = simplexBar.iterator(); jbar.hasNext(); ) {
                             GCSSimplex simplex = (GCSSimplex)jbar.next();
-                            if (application.Launcher.DEBUG) {
+                            if (log.isDebugEnabled()) {
                                 System.out.print("  Processsing simplex: " + simplex.toString() + "\n");
                             }
                             GCSVertex[] simplexverts = simplex.getVertices();
                             for (int isimplex = 0; isimplex < simplexverts.length; isimplex++) {
-                                if (application.Launcher.DEBUG) {
+                                if (log.isDebugEnabled()) {
                                     System.out.print("    vertex: " + simplexverts[isimplex].toString() + "\n");
                                 }
                                 if (simplexverts[isimplex].equals(v1)) {
                                     v1found = true;
-                                    if (application.Launcher.DEBUG) {
+                                    if (log.isDebugEnabled()) {
                                         System.out.print("        found....\n");
                                     }
                                 } else {
-                                    if (application.Launcher.DEBUG) {
+                                    if (log.isDebugEnabled()) {
                                         System.out.print("        not found....\n");
                                     }
                                 }
                             }
                         }
                         if (!v1found) {
-                            if (application.Launcher.DEBUG) {
+                            if (log.isDebugEnabled()) {
                                 System.out.print("deleting v1 " + v1.toString() + "\n");
                             }
                             if (!verticesToDelete.contains(v1)) {
                                 verticesToDelete.add(v1);
                             }
                         } else {
-                            if (application.Launcher.DEBUG) {
+                            if (log.isDebugEnabled()) {
                                 System.out.print("not deleting v1 " + v1.toString() + "\n");
                             }
                         }
                         // Process v2 - ugh
                         // put it in a 2 element array and loop!! lazy dog
-                        if (application.Launcher.DEBUG) {
+                        if (log.isDebugEnabled()) {
                             System.out.print("Checking for unconnected vertex v2: " + v2.toString() + "\n");
                         }
                         boolean vert2found = false;
                         for (Iterator jbar = simplexBar.iterator(); jbar.hasNext(); ) {
                             GCSSimplex simplex = (GCSSimplex)jbar.next();
-                            if (application.Launcher.DEBUG) {
+                            if (log.isDebugEnabled()) {
                                 System.out.print("  Processsing simplex: " + simplex.toString() + "\n");
                             }
                             GCSVertex[] simplexverts = simplex.getVertices();
                             for (int isimplex = 0; isimplex < simplexverts.length; isimplex++) {
-                                if (application.Launcher.DEBUG) {
+                                if (log.isDebugEnabled()) {
                                     System.out.print("    vertex: " + simplexverts[isimplex].toString() + "\n");
                                 }
                                 if (simplexverts[isimplex].equals(v2)) {
                                     vert2found = true;
-                                    if (application.Launcher.DEBUG) {
+                                    if (log.isDebugEnabled()) {
                                         System.out.print("        same....\n");
                                     }
                                 } else {
-                                    if (application.Launcher.DEBUG) {
+                                    if (log.isDebugEnabled()) {
                                         System.out.print("        different....\n");
                                     }
                                 }
                             }
                         }
                         if (!vert2found) {
-                            if (application.Launcher.DEBUG) {
-                                System.out.print("deleting v2 " + v2.toString() + "\n");
-                            }
+                            log.debug("deleting v2 " + v2);
                             if (!verticesToDelete.contains(v2)) {
                                 verticesToDelete.add(v2);
                             }
                         } else {
-                            if (application.Launcher.DEBUG) {
+                            if (log.isDebugEnabled()) {
                                 System.out.print("not deleting v2 " + v2.toString() + "\n");
                             }
                         }
                     } else {
-                        if (application.Launcher.DEBUG) {
+                        if (log.isDebugEnabled()) {
                             System.out.print("  edge is shared by another simplex.  Do not delete it...\n");
                         }
                     }

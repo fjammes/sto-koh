@@ -1,4 +1,4 @@
-package application;
+package ui.controller;
 
 import java.util.*;
 import structures.*;
@@ -7,7 +7,7 @@ import ui.*;
 
 /**
  * <p>Title: Competitive Learning</p>
- * <p>Description: The controller between the algorithm garph and the viewer</p>
+ * <p>Description: The controller between the algorithm graph and the viewer</p>
  * <p>Copyright: Copyright (c) 2005</p>
  * <p>Company: University of Hertfordshire</p>
  * @author K.A.J.Doherty@herts.ac.uk

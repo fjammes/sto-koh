@@ -24,7 +24,7 @@ import java.util.*;
 
 public class ConfigurationFrame extends ExitableJFrame {
 
-  application.Launcher controller;
+  application.Ui controller;
   Hashtable<Object,Object> parameters;
 
   // The algorithm specific parameter panel
@@ -38,7 +38,7 @@ public class ConfigurationFrame extends ExitableJFrame {
   JComboBox jComboBoxAlgorithm = new JComboBox();
 
   public ConfigurationFrame(String title,
-                            application.Launcher controller,
+                            application.Ui controller,
                             Hashtable<Object,Object> parameters) {
     super(title);
     this.controller = controller;

@@ -43,7 +43,7 @@ public class ErrorTable {
      * Get an Comparator of the entries in this ErrorTable
      * @return Iterator Returns an Enumeration of the entries in this ErrorTable
      */
-    public Iterator getEntries() {
+    public Iterator<Entry> getEntries() {
         return errors.iterator();
     }
 
@@ -64,7 +64,7 @@ public class ErrorTable {
      * @return boolean Returns the status of the attempted remove
      */
     public boolean removeEntry(Vertex vertex) {
-        for (Iterator i = errors.iterator(); i.hasNext(); ) {
+        for (Iterator<Entry> i = errors.iterator(); i.hasNext(); ) {
             Entry e = (Entry)i.next();
             if (e.containsVertex(vertex)) return errors.remove(vertex);
         }
@@ -78,7 +78,7 @@ public class ErrorTable {
      */
     final public double getError(Vertex vertex) {
         double error = Double.NaN;
-        for (Iterator i = errors.iterator(); i.hasNext(); ) {
+        for (Iterator<Entry> i = errors.iterator(); i.hasNext(); ) {
             Entry entry = (Entry)i.next();
             if (entry.containsVertex(vertex)) {
                 error = entry.getError();
@@ -96,7 +96,7 @@ public class ErrorTable {
      * @param error double
      */
     final public void setError(Vertex vertex, double error) {
-        for (Iterator i = errors.iterator(); i.hasNext(); ) {
+        for (Iterator<Entry> i = errors.iterator(); i.hasNext(); ) {
             Entry entry = (Entry)i.next();
             if (entry.containsVertex(vertex)) {
                 entry.setError(error);

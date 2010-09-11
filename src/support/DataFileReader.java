@@ -10,7 +10,7 @@ import java.io.*;
 import java.util.*;
 import structures.*;
 
-public class FileOpener {
+public class DataFileReader {
     private Vector<Object> v = new Vector<Object>();
     private Vertex[] data;
     private int dataDim;
@@ -28,7 +28,7 @@ public class FileOpener {
      *  @exception FileNotFoundException Indicates file does not exist
      *  @exception IOException Indicates a general IO error
      */
-    public FileOpener(final String file, final int data_dim, final boolean labelled, final String Mode) {
+    public DataFileReader(final String file, final int data_dim, final boolean labelled, final String Mode) {
         dataDim = data_dim;
         this.labelled = labelled;
         mode = Mode;

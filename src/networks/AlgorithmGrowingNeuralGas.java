@@ -46,12 +46,11 @@ final public class AlgorithmGrowingNeuralGas extends Algorithm {
     private double EPSILONN; // Neighbours get less
     private int ALPHAMax; // Edge dies at this age
     private int LAMBDA; // Growth at iteration number
-    private Counter iteration; // Iteration counter
     private ErrorTable errorTable; // local error table
-    private Dealer dealer; // Epoch handler
     private int label = 0; // Label the vertices of the graph
     
-    private Logger log;
+    Vector<Edge> deleteEdges;
+    Vector<Vertex> deleteVertices; 
 
     Graph  graph = new Graph();
     public Graph getGraph() {
@@ -77,7 +76,6 @@ final public class AlgorithmGrowingNeuralGas extends Algorithm {
     public AlgorithmGrowingNeuralGas(Vertex[] _data_,
                                      int _dataDim_,
                                      int _epoch_,
-                                     Counter _iter_,
                                      double _power_,
                                      int _maxNodes_,
                                      double _epsilonb_,
@@ -95,7 +93,6 @@ final public class AlgorithmGrowingNeuralGas extends Algorithm {
             LAMBDA = _nodeInsertion_;
             EPSILONB = _epsilonb_;
             EPSILONN = _epsilonn_;
-            iteration = _iter_;
             init();
     }
 
@@ -103,15 +100,11 @@ final public class AlgorithmGrowingNeuralGas extends Algorithm {
         // Create epoch handler dealer
         dealer = new Dealer(theInputs, epoch);
 
-        if (application.Launcher.DEBUG) {
-           log = new Logger();
-	}
-
         // Step 0. randomise the two reference vectors in R dimensinal space
         // Initialise graph construct with two verices
         // conected by a single edge
         GNGVertex v1, v2;
-        if (application.Launcher.DEBUG) {
+        if (log.isDebugEnabled()) {
             double[] p1 = {0.1d,0.99d};
             v1 = new GNGVertex(p1, String.valueOf(label++));
             double[] p2 = {0.11d,0.99d};
@@ -127,241 +120,224 @@ final public class AlgorithmGrowingNeuralGas extends Algorithm {
         errorTable = new ErrorTable();
     }
 
+    protected void initialize() {
+        deleteEdges = new Vector<Edge>();
+        deleteVertices = new Vector<Vertex>();    	
+    }
+    
+    protected void iterate() {
+        if (log.isDebugEnabled()) {
 
-    /** Start the training */
-    public void run() {
-        Vector<Edge> deleteEdges = new Vector<Edge>();
-        Vector<Vertex> deleteVertices = new Vector<Vertex>();
-        while (getState() != STOP) {
-            // force a break when the dealer is finished
-            if (!dealer.hasNext()) {
-                this.setState(STOP);
-                if (application.Launcher.DEBUG) {
-                   log.close();
-                }
-                break;
+            double idtnum = getInducedDelaunayTriangulation().numSubGraphs();    
+	    
+            log.debug(
+              (new Double(getTopologyMeasure()).toString())+"\t"+
+              (new Double(getSSE()).toString())+"\t"+
+              (new Double(graph.numSubGraphs()).toString())+"\t"+
+              (new Double(idtnum).toString())
+            );
+          }
+
+          // Step 1. Select random input signal e
+          //         according to P(e)
+          Vertex input;
+          if (log.isDebugEnabled()) {
+            input = (Vertex)dealer.getNextFixed();
+          } else {
+            input = (Vertex)dealer.getNext();
+          }
+          final double[] inputpos = input.getPosition();
+          // Step 2. Find the nearest unit S1 and the second
+          //         nearest unit S2
+          // Generate global error table
+          errorTable.clear();
+          for (Iterator e = graph.getAllVertices(); e.hasNext(); ) {
+            GNGVertex vertex = ((GNGVertex)e.next());
+            errorTable.addEntry(vertex, GNGVertex.Minkowski(norm, input.getPosition(), vertex.getPosition()));
+          }
+          // Determine the winner S1
+          GNGVertex ws1 = null; // Winning Node
+          // Determine second nearest unit S2
+          GNGVertex ws2 = null; // Second Node
+          int loopcount = 1;
+          for (Iterator e = errorTable.getEntries(); e.hasNext(); ) {
+            Entry entry = (Entry)e.next();
+            if (loopcount == 1) {
+               ws1 = (GNGVertex)entry.getVertex();
+            } else if (loopcount == 2) {
+               ws2 = (GNGVertex)entry.getVertex();
+            } else {
+               continue;
             }
-            if ((getState() != PAUSE)) {
+            loopcount++;
+          }
+          // Step 4. Set error of S1
+          ws1.setError(ws1.getError() + (errorTable.getError(ws1) * errorTable.getError(ws1)));
+          if (ws1 == null) {
+              log.error("GNG: Unable to determine a winner\n");
+              System.exit(-2);
+          }
+          if (ws2 == null) {
+          	log.error("GNG: Unable to determine a second place\n");
+              System.exit(-2);
+          }
+          // Step 3. Increment the age of all edges eminating from S1
+          Iterator S1_edges = graph.getIncidentEdges(ws1);
+          if (S1_edges != null) {
+            for ( ; S1_edges.hasNext(); ) {
+              ((GNGEdge)S1_edges.next()).incrementAge();
+            }
+          }
+          else {
+          	log.error("GNG: Unable to get an edge iterator from the winner\n");
+            System.exit(-2);
+          }
 
-                if (application.Launcher.DEBUG) {
+          // Step 5.
+          // Adapt the reference vector of the winner
+          double[] pws1 = ws1.getPosition();
+          for (int i = 0; i < dataDimension; i++) {
+              pws1[i] = pws1[i] + (EPSILONB * (inputpos[i] - pws1[i]));
+          }
+          ws1.setPosition(pws1);
+          // Adapt the reference vector of the neighbourhood
+          Iterator S1_neighbours = graph.getNeighbours(ws1);
+          if (S1_neighbours != null) {
+            for ( ; S1_neighbours.hasNext(); ) {
+              GNGVertex vertex = (GNGVertex)S1_neighbours.next();
+              double[] vlen = vertex.getPosition();
+              for (int i = 0; i < dataDimension; i++) {
+                vlen[i] = vlen[i] + (EPSILONN * (inputpos[i] - vlen[i]));
+              }
+              vertex.setPosition(vlen);
+            }
+          }
 
-                  double idtnum = getInducedDelaunayTriangulation().numSubGraphs();    
-		    
-                  log.append(
-                    (new Double(getTopologyMeasure()).toString())+"\t"+
-                    (new Double(getSSE()).toString())+"\t"+
-                    (new Double(graph.numSubGraphs()).toString())+"\t"+
-                    (new Double(idtnum).toString())+
-                    "\n"
-                  );
-                }
+          // Step 6. If S1 and S2 are connected by and edge, then
+          //           set age to zero
+          //         else
+          //           edge doesn't exist so create edge between S1 and S2
+          if (graph.areConnected(ws1, ws2)) {
+            ((GNGEdge)graph.connection(ws1, ws2)).resetAge();
+          } else {
+            graph.addEdge(new GNGEdge(ws1, ws2));
+          }
 
-                // Step 1. Select random input signal e
-                //         according to P(e)
-                Vertex input;
-                if (application.Launcher.DEBUG) {
-                  input = (Vertex)dealer.getNextFixed();
-                } else {
-                  input = (Vertex)dealer.getNext();
-                }
-                final double[] inputpos = input.getPosition();
-                // Step 2. Find the nearest unit S1 and the second
-                //         nearest unit S2
-                // Generate global error table
-                errorTable.clear();
-                for (Iterator e = graph.getAllVertices(); e.hasNext(); ) {
-                  GNGVertex vertex = ((GNGVertex)e.next());
-                  errorTable.addEntry(vertex, GNGVertex.Minkowski(norm, input.getPosition(), vertex.getPosition()));
-                }
-                // Determine the winner S1
-                GNGVertex ws1 = null; // Winning Node
-                // Determine second nearest unit S2
-                GNGVertex ws2 = null; // Second Node
-                int loopcount = 1;
-                for (Iterator e = errorTable.getEntries(); e.hasNext(); ) {
-                  Entry entry = (Entry)e.next();
-                  if (loopcount == 1) {
-                     ws1 = (GNGVertex)entry.getVertex();
-                  } else if (loopcount == 2) {
-                     ws2 = (GNGVertex)entry.getVertex();
+          // Step 7. Remove all edges with age greater than ALPHAMax
+          if (graph.numVertices() > 2) {
+            deleteEdges.removeAllElements();
+            for (Iterator e = graph.getAllEdges(); e.hasNext(); ) {
+              GNGEdge edge = (GNGEdge)e.next();
+              if (edge.getAge() > ALPHAMax) {
+                deleteEdges.add(edge);
+              }
+            }
+            for (Iterator i = deleteEdges.iterator(); i.hasNext(); ) {
+              GNGEdge e = (GNGEdge)i.next();
+              graph.deleteEdge(e);
+            }
+          }
+          // Remove vertices from the graph if they have no neighbours
+          deleteVertices.removeAllElements();
+          for (Iterator e = graph.getAllVertices(); e.hasNext(); ) {
+            final GNGVertex vertex = (GNGVertex)e.next();
+            if (graph.degree(vertex) == 0) {
+              deleteVertices.add(vertex);
+            }
+          }
+          for (Iterator i = deleteVertices.iterator(); i.hasNext(); ) {
+            GNGVertex v = (GNGVertex)i.next();
+            graph.deleteVertex(v);
+          }
+          if (graph.numVertices() < ndatumsMax) {
+              // Step 8. If the number of input signals generated so far is
+              //         an integer multiple of lambda, insert a new unit
+              if (iteration.getCounter() % LAMBDA == 0) {
+                  double qValue = -Double.MAX_VALUE;
+                  GNGVertex q = null;
+                  for (Iterator e = graph.getAllVertices(); e.hasNext(); ) {
+                    GNGVertex vertex = (GNGVertex)e.next();
+                    if (vertex.getError() > qValue) {
+                      qValue = vertex.getError();
+                      q = vertex;
+                    }
+                  }
+                  if (q == null) {
+                    System.err.print("GrowingNeuralGas: Unable to determine the " +
+                          "node with the maximum accumilated error\n");
+                    System.exit(-2);
+                  }
+                  // Determine neighbour f of Datum q with the
+                  // maximum accumulated error
+                  double fValue = -Double.MAX_VALUE;
+                  GNGVertex f = null;
+                  Iterator q_neighbours = graph.getNeighbours(q);
+                  if (q_neighbours != null) {
+                    for ( ; q_neighbours.hasNext(); ) {
+                      GNGVertex vertex = ((GNGVertex)q_neighbours.next());
+                      double error = vertex.getError();
+                      if (error > fValue) {
+                        fValue = error;
+                        f = vertex;
+                      }
+                    }
+                    if (f == null) {
+                      System.err.print("GrowingNeuralGas: Unable to find a neighbour of q\n");
+                      System.exit(-2);
+                    }
+                  }
+                  // Create a new Datum r, with weight vector the average
+                  // of f and q
+                  // for some God known reason, f is sometimes null?
+                  // I would have thought q would always have a neighbourhood -
+                  // I am obviously not managing the graph correctly?
+                  // So, with the null checks above and these
+                  // checks, it should never happen without exiting the runtime.
+                  //
+                  // 8 Feb 2005 - Refactoring!
+                  // I still don't have the balls (or inclination) to remove these
+                  // null checks - so here they stay
+                  if (f != null && q != null) {
+                      double[] rpos = new double[dataDimension];
+                      final double[] fpos = f.getPosition();
+                      final double[] qpos = q.getPosition();
+                      for (int i = 0; i < dataDimension; i++) {
+                          rpos[i] = (fpos[i] + qpos[i]) / 2.0d;
+                      }
+                      GNGVertex r = new GNGVertex(rpos, String.valueOf(label++));
+                      // Decrease the accumulated errors of f and q
+                      final double auError = f.getError();
+                      final double buError = q.getError();
+                      f.setError(auError - (ALPHA * auError));
+                      q.setError(buError - (ALPHA * buError));
+                      // In original paper: Initialise the error value of
+                      // r with the new value of the error value of q
+                      // On website: error value of r is set to mean of
+                      // errors of q and f
+                      if (ORIGINAL) {
+                          r.setError(buError);
+                      }
+                      else {
+                          r.setError((auError + buError) / 2.0d);
+                      }
+                      // and insert edges between q and f, and the new vertex r
+                      // Add new vertex r to the graph
+                      graph.addVertex(r);
+                      graph.addEdge(new GNGEdge(q, r));
+                      graph.addEdge(new GNGEdge(r, f));
+                      graph.deleteEdge(graph.connection(f, q));
                   } else {
-                     continue;
-                  }
-                  loopcount++;
-                }
-                // Step 4. Set error of S1
-                ws1.setError(ws1.getError() + (errorTable.getError(ws1) * errorTable.getError(ws1)));
-                if (ws1 == null) {
-                    System.err.print("GNG: Unable to determine a winner\n");
-                    System.exit(-2);
-                }
-                if (ws2 == null) {
-                    System.err.print("GNG: Unable to determine a second place\n");
-                    System.exit(-2);
-                }
-                // Step 3. Increment the age of all edges eminating from S1
-                Iterator S1_edges = graph.getIncidentEdges(ws1);
-                if (S1_edges != null) {
-                  for ( ; S1_edges.hasNext(); ) {
-                    ((GNGEdge)S1_edges.next()).incrementAge();
-                  }
-                }
-                else {
-                  System.err.print("GNG: Unable to get an edge iterator from the winner\n");
-                  System.exit(-2);
-                }
-
-                // Step 5.
-                // Adapt the reference vector of the winner
-                double[] pws1 = ws1.getPosition();
-                for (int i = 0; i < dataDimension; i++) {
-                    pws1[i] = pws1[i] + (EPSILONB * (inputpos[i] - pws1[i]));
-                }
-                ws1.setPosition(pws1);
-                // Adapt the reference vector of the neighbourhood
-                Iterator S1_neighbours = graph.getNeighbours(ws1);
-                if (S1_neighbours != null) {
-                  for ( ; S1_neighbours.hasNext(); ) {
-                    GNGVertex vertex = (GNGVertex)S1_neighbours.next();
-                    double[] vlen = vertex.getPosition();
-                    for (int i = 0; i < dataDimension; i++) {
-                      vlen[i] = vlen[i] + (EPSILONN * (inputpos[i] - vlen[i]));
-                    }
-                    vertex.setPosition(vlen);
-                  }
-                }
-
-                // Step 6. If S1 and S2 are connected by and edge, then
-                //           set age to zero
-                //         else
-                //           edge doesn't exist so create edge between S1 and S2
-                if (graph.areConnected(ws1, ws2)) {
-                  ((GNGEdge)graph.connection(ws1, ws2)).resetAge();
-                } else {
-                  graph.addEdge(new GNGEdge(ws1, ws2));
-                }
-
-                // Step 7. Remove all edges with age greater than ALPHAMax
-                if (graph.numVertices() > 2) {
-                  deleteEdges.removeAllElements();
-                  for (Iterator e = graph.getAllEdges(); e.hasNext(); ) {
-                    GNGEdge edge = (GNGEdge)e.next();
-                    if (edge.getAge() > ALPHAMax) {
-                      deleteEdges.add(edge);
-                    }
-                  }
-                  for (Iterator i = deleteEdges.iterator(); i.hasNext(); ) {
-                    GNGEdge e = (GNGEdge)i.next();
-                    graph.deleteEdge(e);
-                  }
-                }
-                // Remove vertices from the graph if they have no neighbours
-                deleteVertices.removeAllElements();
-                for (Iterator e = graph.getAllVertices(); e.hasNext(); ) {
-                  final GNGVertex vertex = (GNGVertex)e.next();
-                  if (graph.degree(vertex) == 0) {
-                    deleteVertices.add(vertex);
-                  }
-                }
-                for (Iterator i = deleteVertices.iterator(); i.hasNext(); ) {
-                  GNGVertex v = (GNGVertex)i.next();
-                  graph.deleteVertex(v);
-                }
-                if (graph.numVertices() < ndatumsMax) {
-                    // Step 8. If the number of input signals generated so far is
-                    //         an integer multiple of lambda, insert a new unit
-                    if (iteration.getCounter() % LAMBDA == 0) {
-                        double qValue = -Double.MAX_VALUE;
-                        GNGVertex q = null;
-                        for (Iterator e = graph.getAllVertices(); e.hasNext(); ) {
-                          GNGVertex vertex = (GNGVertex)e.next();
-                          if (vertex.getError() > qValue) {
-                            qValue = vertex.getError();
-                            q = vertex;
-                          }
-                        }
-                        if (q == null) {
-                          System.err.print("GrowingNeuralGas: Unable to determine the " +
-                                "node with the maximum accumilated error\n");
-                          System.exit(-2);
-                        }
-                        // Determine neighbour f of Datum q with the
-                        // maximum accumulated error
-                        double fValue = -Double.MAX_VALUE;
-                        GNGVertex f = null;
-                        Iterator q_neighbours = graph.getNeighbours(q);
-                        if (q_neighbours != null) {
-                          for ( ; q_neighbours.hasNext(); ) {
-                            GNGVertex vertex = ((GNGVertex)q_neighbours.next());
-                            double error = vertex.getError();
-                            if (error > fValue) {
-                              fValue = error;
-                              f = vertex;
-                            }
-                          }
-                          if (f == null) {
-                            System.err.print("GrowingNeuralGas: Unable to find a neighbour of q\n");
-                            System.exit(-2);
-                          }
-                        }
-                        // Create a new Datum r, with weight vector the average
-                        // of f and q
-                        // for some God known reason, f is sometimes null?
-                        // I would have thought q would always have a neighbourhood -
-                        // I am obviously not managing the graph correctly?
-                        // So, with the null checks above and these
-                        // checks, it should never happen without exiting the runtime.
-                        //
-                        // 8 Feb 2005 - Refactoring!
-                        // I still don't have the balls (or inclination) to remove these
-                        // null checks - so here they stay
-                        if (f != null && q != null) {
-                            double[] rpos = new double[dataDimension];
-                            final double[] fpos = f.getPosition();
-                            final double[] qpos = q.getPosition();
-                            for (int i = 0; i < dataDimension; i++) {
-                                rpos[i] = (fpos[i] + qpos[i]) / 2.0d;
-                            }
-                            GNGVertex r = new GNGVertex(rpos, String.valueOf(label++));
-                            // Decrease the accumulated errors of f and q
-                            final double auError = f.getError();
-                            final double buError = q.getError();
-                            f.setError(auError - (ALPHA * auError));
-                            q.setError(buError - (ALPHA * buError));
-                            // In original paper: Initialise the error value of
-                            // r with the new value of the error value of q
-                            // On website: error value of r is set to mean of
-                            // errors of q and f
-                            if (ORIGINAL) {
-                                r.setError(buError);
-                            }
-                            else {
-                                r.setError((auError + buError) / 2.0d);
-                            }
-                            // and insert edges between q and f, and the new vertex r
-                            // Add new vertex r to the graph
-                            graph.addVertex(r);
-                            graph.addEdge(new GNGEdge(q, r));
-                            graph.addEdge(new GNGEdge(r, f));
-                            graph.deleteEdge(graph.connection(f, q));
-                        } else {
-                            System.err.print("AlgorithmGrowingNeuralGas: f or q is null");
-                            System.exit(-2);
-                        } // End of f and q null checks
-                    } // End of growing stage
-                } // End exceeeded maximum number of Datums
-                // Step 9. Decrease all error values by multiplying them with
-                //         a constant BETA
-                for (Iterator e = graph.getAllVertices(); e.hasNext(); ) {
-                  final GNGVertex vertex = (GNGVertex)e.next();
-                  vertex.setError(vertex.getError() * BETA);
-                }
-                // Increment the iteration counter
-                this.delay(this.SHORT_DELAY);
-                iteration.increment();
-            } // if not PAUSE
-            this.delay(this.LONG_DELAY);
-        } // End while less than epoch and RUN
-    } // end run()
-
+                      System.err.print("AlgorithmGrowingNeuralGas: f or q is null");
+                      System.exit(-2);
+                  } // End of f and q null checks
+              } // End of growing stage
+          } // End exceeeded maximum number of Datums
+          // Step 9. Decrease all error values by multiplying them with
+          //         a constant BETA
+          for (Iterator e = graph.getAllVertices(); e.hasNext(); ) {
+            final GNGVertex vertex = (GNGVertex)e.next();
+            vertex.setError(vertex.getError() * BETA);
+          }
+    }
+    
 }

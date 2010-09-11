@@ -1,6 +1,14 @@
 package structures;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.ListIterator;
+import java.util.NoSuchElementException;
+import java.util.Observable;
+import java.util.Vector;
+import java.util.LinkedList;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * <p>Title: Competitive Learning</p>
@@ -20,6 +28,9 @@ import java.util.*;
  * @version 2.2 Removed compiler > 1.5 container unchecked warnings
  */
 public class Graph extends Observable implements Cloneable {
+	
+    protected Log log = LogFactory.getLog(this.getClass());
+	
     /** The container Object for this Graph's Edges */
     protected Vector<Edge> edges_ = new Vector<Edge>();
 

@@ -30,7 +30,6 @@ final public class AlgorithmNeuralGas extends Algorithm {
     private int dataDimension; // Data dimensionality
     private double norm; // The distance norm
     private int epoch; // Number of epochs to run for
-    private Counter iteration; // Iteration counter
     private double li;
     private double lf;
     private double ei;
@@ -38,7 +37,6 @@ final public class AlgorithmNeuralGas extends Algorithm {
 
     private int T_MAX;
     private ErrorTable errorTable; // local error table
-    private Dealer dealer; // Epoch handler
     private int label = 0; // Label the vertices of the graph
 
     Graph  graph = new Graph();
@@ -66,7 +64,6 @@ final public class AlgorithmNeuralGas extends Algorithm {
     public AlgorithmNeuralGas(Vertex[] _data_,
                               int _dataDim_,
                               int _epoch_,
-                              Counter _iter_,
                               double _power_,
                               int _maxNodes_,
                               double _neighbourhood_initial_,
@@ -80,7 +77,6 @@ final public class AlgorithmNeuralGas extends Algorithm {
         dataDimension = _dataDim_;
         norm = _power_;
         epoch = _epoch_;
-        iteration = _iter_;
 
         li = _neighbourhood_initial_;
         lf = _neighbourhood_final_;
@@ -96,7 +92,7 @@ final public class AlgorithmNeuralGas extends Algorithm {
         // Step 0. randomise all the reference vectors in R dimensinal space
         // and add to the graph structure
         for (int i = 0; i < ndatumsMax; i++) {
-            if (application.Launcher.DEBUG) {
+            if (log.isDebugEnabled()) {
                 double[] p1 = {0.1d,0.99d};
                 graph.addVertex(new GNGVertex(p1, String.valueOf(label++)));
             } else {
@@ -109,53 +105,44 @@ final public class AlgorithmNeuralGas extends Algorithm {
         T_MAX = theInputs.length * epoch;
     }
 
-    /** Start the training */
-    public void run() {
-        double et;
-        double ethl;
-        double lt;
-        while (getState() != STOP) {
-            // force a break when the dealer is finished
-            if (!dealer.hasNext()) {
-                this.setState(STOP);
-                break;
-            }
-            if ((getState() != PAUSE)) {
-                // Set up the time dependencies
-                double power = ((double)iteration.getCounter()) / ((double)T_MAX);
-                lt = li * Math.pow(lf / li, power);
-                et = ei * Math.pow(ef / ei, power);
-                // Step 1. Select random input signal e
-                //         according to P(e)
-                Vertex input;
-                if (application.Launcher.DEBUG) {
-                    input = (Vertex)dealer.getNextFixed();
-                } else {
-                    input = (Vertex)dealer.getNext();
-                }
-                final double[] inputpos = input.getPosition();
-                // Generate global error table
-                errorTable.clear();
-                for (Iterator e = graph.getAllVertices(); e.hasNext(); ) {
-                    GNGVertex vertex = ((GNGVertex)e.next());
-                    errorTable.addEntry(vertex, GNGVertex.Minkowski(norm, inputpos, vertex.getPosition()));
-                }
-                int num = 0;
-                for (Iterator e = errorTable.getEntries(); e.hasNext(); num++) {
-                    Vertex vertex = (Vertex)(((Entry)e.next()).getVertex());
-                    ethl = Math.exp(-num / lt) * et;
-                    double[] pws1 = vertex.getPosition();
-                    for (int i = 0; i < dataDimension; i++) {
-                        pws1[i] = pws1[i] + (ethl * (inputpos[i] - pws1[i]));
-                    }
-                    vertex.setPosition(pws1);
-                }
-                // Increment the iteration counter
-                this.delay(this.SHORT_DELAY);
-                iteration.increment();
-            } // if not PAUSE
-            this.delay(this.LONG_DELAY);
-        } // End while less than epoch and RUN
-    } // end run()
+    protected void initialize() {
+    	
+    }
 
+    protected void iterate() {
+    	 double et;
+         double ethl;
+         double lt;
+         // Set up the time dependencies
+         double power = ((double)iteration.getCounter()) / ((double)T_MAX);
+         lt = li * Math.pow(lf / li, power);
+         et = ei * Math.pow(ef / ei, power);
+         // Step 1. Select random input signal e
+         //         according to P(e)
+         Vertex input;
+         if (log.isDebugEnabled()) {
+             input = (Vertex)dealer.getNextFixed();
+         } else {
+             input = (Vertex)dealer.getNext();
+         }
+         final double[] inputpos = input.getPosition();
+         // Generate global error table
+         errorTable.clear();
+         for (Iterator e = graph.getAllVertices(); e.hasNext(); ) {
+             GNGVertex vertex = ((GNGVertex)e.next());
+             errorTable.addEntry(vertex, GNGVertex.Minkowski(norm, inputpos, vertex.getPosition()));
+         }
+         int num = 0;
+         for (Iterator e = errorTable.getEntries(); e.hasNext(); num++) {
+             Vertex vertex = (Vertex)(((Entry)e.next()).getVertex());
+             ethl = Math.exp(-num / lt) * et;
+             double[] pws1 = vertex.getPosition();
+             for (int i = 0; i < dataDimension; i++) {
+                 pws1[i] = pws1[i] + (ethl * (inputpos[i] - pws1[i]));
+             }
+             vertex.setPosition(pws1);
+         }
+
+    }
+    
 }

@@ -2,8 +2,11 @@ package networks;
 
 import structures.*;
 import support.*;
-import Jama.*;
+import Jama.Matrix;
 import java.util.*;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * <p>Title: Competitive Learning</p>
@@ -18,44 +21,43 @@ import java.util.*;
  * @version 1.1 Added static int for long and short delays for thread yield
  */
 abstract public class Algorithm implements Runnable {
+    
+    protected Log log = LogFactory.getLog(this.getClass());
+    
+    // thread yield parameters
+    final static int SHORT_DELAY = 1;
+    final static int LONG_DELAY = 10;
+    
+    protected Dealer dealer; // Epoch handler
+    protected Counter iteration; // Iteration counter
 
-    // Set the possible states
-    final static public int STOP = -1;
-    final static public int PAUSE = 0;
-    final static public int RUN = 1;
-    protected int _state_ = PAUSE;
+	private volatile boolean pleaseWait;
+	private volatile boolean pleaseStop;
 
+	private Thread algorithmThread;
 
-    /**
-     * State setter
-     * @param state int
-     */
-    final public void setState(int state) {
-        _state_ = state;
+	public Algorithm() {
+        iteration = new Counter();
     }
+	
+    public Counter getIteration() {
+		return iteration;
+	}
 
-    /**
-     * State getter
-     * @return int
-     */
-    final public int getState() {
-        return _state_;
-    }
-
-
+	public void setIteration(Counter iteration) {
+		this.iteration = iteration;
+	}
+    
     abstract public Vertex [] getInputs();
 
     // All algorithms have a Graph
     // and somethings need access to it
     abstract public Graph getGraph();
-
-    // All algorithms are runnable, so we must run()
-    abstract public void run();
-
-
-    // thread yield parameters
-    final static int SHORT_DELAY = 1;
-    final static int LONG_DELAY = 10;
+    
+    
+    abstract protected void initialize();
+    abstract protected void iterate();
+    
 
     // and sleep() for a while
     protected void delay(int milliseconds) {
@@ -64,6 +66,65 @@ abstract public class Algorithm implements Runnable {
       }
       catch (InterruptedException ie) {}
     }
+    
+    public void start() {
+        	algorithmThread = new Thread(this);
+        	algorithmThread.start();
+    }
+    
+ public Thread getAlgorithmThread() {
+		return algorithmThread;
+	}
+
+	// All algorithms are runnable, so we must run()
+    public void run() {
+    	log.debug("Setting pleaseWait to false ");
+    	pleaseWait=false;
+    	pleaseStop=false;
+    	initialize();
+        while (!pleaseStop) {
+        	
+				if (pleaseWait) {
+					log.debug("Pausing algorithm");
+					// Check if should wait 
+		        	synchronized (this) { 
+					try {
+
+		        		log.debug("Calling wait ");
+						wait();
+					} catch (Exception e) {
+						log.error(e.getMessage(), e);
+						System.exit(-2);
+					}
+		        	}
+				}
+		
+        	
+            // force a break when the dealer is finished
+            if (!dealer.hasNext()) {
+                this.stop();
+                break;
+            }
+            	iterate();
+                iteration.increment();
+            this.delay(Algorithm.LONG_DELAY);
+        } // End while less than epoch and RUN
+    } // end run()
+    
+    public void stop() {
+    	this.pleaseStop = true;
+    }
+
+    public void pause() {
+    	this.pleaseWait = true;
+    }
+
+    public synchronized void resume() {
+    	log.debug("Resuming algorithm");
+    	this.pleaseWait = false; 
+    	this.notify();
+    }
+    
 
 
     /**
@@ -73,7 +134,7 @@ abstract public class Algorithm implements Runnable {
     public double getSSE() {
       final Vertex [] v = new Vertex[this.getGraph().numVertices()];
       int count = 0;
-      for (java.util.Iterator i = this.getGraph().getAllVertices(); i.hasNext(); count++){
+      for (java.util.Iterator<Vertex> i = this.getGraph().getAllVertices(); i.hasNext(); count++){
         v[count] = ((Vertex)i.next());
       }
       return (new Classification(this.getInputs(), v)).sse();
@@ -91,7 +152,7 @@ abstract public class Algorithm implements Runnable {
       // Create an array of references to the algorithm graph vertices
       Vertex [] v = new Vertex[this.getGraph().numVertices()];
       int count = 0;
-      for (java.util.Iterator i = this.getGraph().getAllVertices(); i.hasNext(); count++){
+      for (java.util.Iterator<Vertex> i = this.getGraph().getAllVertices(); i.hasNext(); count++){
         v[count] = ((Vertex)i.next());
         triangulation.addVertex(v[count]);
       }
@@ -108,13 +169,12 @@ abstract public class Algorithm implements Runnable {
           map.put(new Double( Vertex.Minkowski(2.0d, input.getPosition(), v[j].getPosition())),v[j]);
         }
 
-        Vertex vc = (Vertex) map.remove( (Double) map.firstKey() );
-        Vertex vs = (Vertex) map.remove( (Double) map.firstKey() );
+        Vertex vc = map.remove( map.firstKey() );
+        Vertex vs = map.remove( map.firstKey() );
         if ( !triangulation.areConnected(vc,vs) ) {
           triangulation.addEdge(new ConcreteEdge(vc, vs));
         }
       }
-
 
       return triangulation;
     }
@@ -146,10 +206,9 @@ abstract public class Algorithm implements Runnable {
       // create the adjacency matrices
 
       int ii = 0;
-      Iterator<Vertex> it = network.getAllVertices();
       Vertex [] vit = new Vertex[network.numVertices()];
       for (Iterator<Vertex> i = network.getAllVertices(); i.hasNext(); ) {
-        vit[ii++] = (Vertex) i.next();
+        vit[ii++] = i.next();
       }
       for (int vii = 0; vii < vit.length; vii++) {
         for (int vjj = 0; vjj < vit.length; vjj++) {

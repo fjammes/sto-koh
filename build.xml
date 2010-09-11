@@ -1,35 +1,55 @@
-<project name="Competitive Learning" default="compile" basedir=".">
+<project name="Competitive Learning" default="build" basedir=".">
 
     <property name="src.dir" value="${basedir}/src" />
     <property name="build.dir" value="${basedir}/build" />
     <property name="doc.dir" value="${basedir}/doc" />
     <property name="lib.dir" value="${basedir}/lib" />
+    <property name="prop.dir" value="${basedir}/properties" />
 
     <path id="lib.classpath">
         <fileset dir="${lib.dir}">
             <include name="**/*.jar" />
         </fileset>
     </path>
+	
+	<path id="run.classpath">
+		<pathelement location="${build.dir}" />
+		<pathelement location="${prop.dir}" />
+		<path refid="lib.classpath" />
+	</path>
 
    <target name="clean">
       <delete dir="${build.dir}" />
       <delete dir="${doc.dir}" />
    </target>
 
-   <target name="prepare" depends="clean">
+   <target name="init" depends="clean">
       <mkdir dir="${build.dir}" />
       <mkdir dir="${doc.dir}" />
    </target>
 
-   <target name="compile" depends="prepare">
-     <javac srcdir="${src.dir}" destdir="${build.dir}" classpathref="lib.classpath">
+   <target name="build" depends="init" description="Compile the sources">
+     <javac srcdir="${src.dir}" destdir="${build.dir}" classpathref="lib.classpath" debug="on">
        <compilerarg value="-Xlint:unchecked" />
      </javac>
    </target>
 
-   <target name="documents" depends="compile">
+   <target name="doc" depends="build" description="Generate javadoc">
      <javadoc sourcepath="${src.dir}" destdir="${doc.dir}" />
    </target>
+	
+	<target name="run-batch" description="Launch in batch mode, use with -Ddatafile=path_to_datafile">
+		<java classname="application.Cli" failonerror="true" fork="yes">
+			<classpath refid="run.classpath" />
+			<arg line="${args}"/>
+		</java>
+	</target>
+	
+	<target name="run-ui" description="Launch GUI">
+		<java classname="application.Ui" failonerror="true" fork="yes">
+			<classpath refid="run.classpath" />
+		</java>
+	</target>
 
 </project>
 
